@@ -1,0 +1,1 @@
+# RNyAP-Clasificacion-de-Dano-en-Edificaciones
