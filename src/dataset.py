@@ -1,70 +1,194 @@
-
-import torch
-from torch.utils.data import Dataset
-import cv2
 import numpy as np
-from src.configuracion import (IMG_SIZE,CLASSES,PADDING)
+import cv2
+import torch
+
+from torch.utils.data import Dataset
+from sklearn.model_selection import train_test_split
+
+from src.configuracion import (
+    IMG_SIZE,
+    CLASSES,
+    PADDING
+)
+
 from src.lectura import (
     leer_json,
-    leer_imagen,
+    leer_recorte,
     obtener_archivos,
     obtener_edificios,
     obtener_coordenadas,
     obtener_bbox
 )
 
+
+IMAGENET_MEAN = torch.tensor(
+    [0.485, 0.456, 0.406],
+    dtype=torch.float32
+).view(3, 1, 1)
+
+IMAGENET_STD = torch.tensor(
+    [0.229, 0.224, 0.225],
+    dtype=torch.float32
+).view(3, 1, 1)
+
+
 class XView2(Dataset):
 
-    def __init__(self, dataset_dir):
+    def __init__(
+        self,
+        dataset_dir,
+        sample_size=None,
+        random_state=42
+    ):
 
         self.samples = []
+
         escenas = obtener_archivos(dataset_dir)
-        print(f"Escenas encontradas: {len(escenas)}")
+
+        print(
+            f"Escenas encontradas: {len(escenas)}"
+        )
+
         for escena in escenas:
-            json_data = leer_json(escena["post_json"])
-            edificios = obtener_edificios(json_data)
+
+            json_data = leer_json(
+                escena["post_json"]
+            )
+
+            edificios = obtener_edificios(
+                json_data
+            )
 
             for edificio in edificios:
-                if edificio["label"] == "un-classified":
+
+                etiqueta = edificio["label"]
+
+                if etiqueta not in CLASSES:
                     continue
-                coords = obtener_coordenadas(edificio["wkt"])
+
+                coords = obtener_coordenadas(
+                    edificio["wkt"]
+                )
+
                 bbox = obtener_bbox(coords)
+
                 self.samples.append(
                     {
+                        "scene_id": str(
+                            escena["pre_img"]
+                        ),
                         "pre_img": escena["pre_img"],
                         "post_img": escena["post_img"],
                         "bbox": bbox,
-                        "label": CLASSES[edificio["label"]]
+                        "label": CLASSES[etiqueta]
                     }
                 )
 
-        print(f"Total edificios: {len(self.samples)}")
+        print(
+            f"Total edificios encontrados: "
+            f"{len(self.samples)}"
+        )
+
+        if (
+            sample_size is not None
+            and sample_size < len(self.samples)
+        ):
+
+            indices = np.arange(
+                len(self.samples)
+            )
+
+            etiquetas = np.array(
+                [
+                    sample["label"]
+                    for sample in self.samples
+                ]
+            )
+
+            seleccionados, _ = train_test_split(
+                indices,
+                train_size=sample_size,
+                stratify=etiquetas,
+                random_state=random_state
+            )
+
+            self.samples = [
+                self.samples[i]
+                for i in seleccionados
+            ]
+
+        print(
+            f"Total edificios utilizados: "
+            f"{len(self.samples)}"
+        )
 
     def __len__(self):
+
         return len(self.samples)
 
+    def preparar_imagen(self, imagen):
+
+        imagen = cv2.resize(
+            imagen,
+            (IMG_SIZE, IMG_SIZE),
+            interpolation=cv2.INTER_AREA
+        )
+
+        imagen = np.clip(
+            imagen,
+            0,
+            255
+        )
+
+        imagen = imagen.astype(
+            np.float32
+        ) / 255.0
+
+        imagen = np.ascontiguousarray(
+            imagen
+        )
+
+        imagen = torch.from_numpy(
+            imagen
+        ).permute(2, 0, 1)
+
+        imagen = (
+            imagen - IMAGENET_MEAN
+        ) / IMAGENET_STD
+
+        return imagen
+
     def __getitem__(self, idx):
+
         sample = self.samples[idx]
-        pre_img = leer_imagen(sample["pre_img"])
-        post_img = leer_imagen(sample["post_img"])
-        xmin, ymin, xmax, ymax = sample["bbox"]
 
-        h, w, _ = pre_img.shape
+        pre_crop = leer_recorte(
+            sample["pre_img"],
+            sample["bbox"],
+            PADDING
+        )
 
-        xmin = max(0, xmin - PADDING)
-        ymin = max(0, ymin - PADDING)
+        post_crop = leer_recorte(
+            sample["post_img"],
+            sample["bbox"],
+            PADDING
+        )
 
-        xmax = min(w, xmax + PADDING)
-        ymax = min(h, ymax + PADDING)
+        pre_crop = self.preparar_imagen(
+            pre_crop
+        )
 
-        pre_crop = pre_img[ ymin:ymax,xmin:xmax]
-        post_crop = post_img[ymin:ymax,xmin:xmax]
-        pre_crop = cv2.resize(pre_crop,(IMG_SIZE, IMG_SIZE))
-        post_crop = cv2.resize(post_crop,(IMG_SIZE, IMG_SIZE))
-        pre_crop = (pre_crop.astype(np.float32) / 255.0)
-        post_crop = (post_crop.astype(np.float32) / 255.0)
-        pre_crop = torch.tensor(pre_crop).permute(2, 0, 1)
-        post_crop = torch.tensor(post_crop).permute(2, 0, 1)
-        label = torch.tensor(sample["label"],dtype=torch.long)
+        post_crop = self.preparar_imagen(
+            post_crop
+        )
 
-        return (pre_crop,post_crop,label)
+        label = torch.tensor(
+            sample["label"],
+            dtype=torch.long
+        )
+
+        return (
+            pre_crop,
+            post_crop,
+            label
+        )
