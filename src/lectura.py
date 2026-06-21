@@ -1,4 +1,5 @@
 import json
+from rasterio.windows import Window
 from pathlib import Path
 import rasterio
 import numpy as np
@@ -15,6 +16,60 @@ def leer_imagen(img_path):
         imagen = src.read()
     imagen = np.transpose(imagen, (1, 2, 0))
     return imagen
+
+
+def leer_recorte(img_path, bbox, padding=0):
+
+    xmin, ymin, xmax, ymax = bbox
+
+    with rasterio.open(img_path) as src:
+
+        x0 = min(
+            max(0, int(xmin) - padding),
+            src.width - 1
+        )
+
+        y0 = min(
+            max(0, int(ymin) - padding),
+            src.height - 1
+        )
+
+        x1 = min(
+            max(x0 + 1, int(xmax) + padding),
+            src.width
+        )
+
+        y1 = min(
+            max(y0 + 1, int(ymax) + padding),
+            src.height
+        )
+
+        ventana = Window(
+            col_off=x0,
+            row_off=y0,
+            width=x1 - x0,
+            height=y1 - y0
+        )
+
+        imagen = src.read(window=ventana)
+
+    imagen = np.transpose(
+        imagen,
+        (1, 2, 0)
+    )
+
+    if imagen.shape[2] > 3:
+        imagen = imagen[:, :, :3]
+
+    elif imagen.shape[2] == 1:
+        imagen = np.repeat(
+            imagen,
+            3,
+            axis=2
+        )
+
+    return imagen
+
 
 def obtener_archivos(dataset_dir):
     dataset_dir = Path(dataset_dir)

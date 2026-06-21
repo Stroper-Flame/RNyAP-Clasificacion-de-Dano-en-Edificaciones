@@ -69,7 +69,42 @@ def graficar_matriz_confusion(confusion_matrix, class_names):
 
 def mostrar_metricas(resultados):
 
-    print(f"Accuracy : {resultados['accuracy']:.4f}")
-    print(f"Precision: {resultados['precision']:.4f}")
-    print(f"Recall   : {resultados['recall']:.4f}")
-    print(f"F1 Score : {resultados['f1']:.4f}")
+    print(
+        f"Accuracy          : "
+        f"{resultados['accuracy']:.4f}"
+    )
+
+    print(
+        f"Balanced Accuracy : "
+        f"{resultados['balanced_accuracy']:.4f}"
+    )
+
+    print(
+        f"Precision weighted: "
+        f"{resultados['precision']:.4f}"
+    )
+
+    print(
+        f"Recall weighted   : "
+        f"{resultados['recall']:.4f}"
+    )
+
+    print(
+        f"F1 weighted       : "
+        f"{resultados['f1']:.4f}"
+    )
+
+    print(
+        f"Precision macro   : "
+        f"{resultados['precision_macro']:.4f}"
+    )
+
+    print(
+        f"Recall macro      : "
+        f"{resultados['recall_macro']:.4f}"
+    )
+
+    print(
+        f"F1 macro          : "
+        f"{resultados['f1_macro']:.4f}"
+    )
