@@ -9,6 +9,9 @@ RESULTADOS_DIR = ROOT_DIR / "resultados"
 MODELOS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTADOS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Ruta del dataset
+DATASET_DIR = Path(r"C:\Users\danie\Downloads\geotiffs")
+
 # Tamaño de muestra para pruebas
 # None = dataset completo
 SAMPLE_SIZE = None
