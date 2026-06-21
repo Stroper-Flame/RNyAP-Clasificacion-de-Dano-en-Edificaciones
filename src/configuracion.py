@@ -9,7 +9,7 @@ MODELOS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTADOS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Tamaño de muestra para pruebas
-SAMPLE_SIZE = 250     # None = dataset completo
+SAMPLE_SIZE = None     # None = dataset completo
 
 #Ruta para el Dataset
 DATASET_DIR = Path("/home/markusancestro/Documentos/UPIIT-IPN/xView2_Dataset/geotiffs/")
