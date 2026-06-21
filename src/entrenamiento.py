@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import (DataLoader,random_split)
-from src.configuracion import (BATCH_SIZE,TRAIN_SIZE,VAL_SIZE,TEST_SIZE)
+from src.configuracion import (BATCH_SIZE,TRAIN_SIZE,VAL_SIZE,TEST_SIZE,RANDOM_STATE,NUM_WORKERS,DEVICE)
 
 def crear_dataloaders(dataset):
 
@@ -9,30 +9,35 @@ def crear_dataloaders(dataset):
     train_size = int(TRAIN_SIZE * total)
     val_size = int(VAL_SIZE * total)
     test_size = (total- train_size- val_size)
-    train_dataset, val_dataset, test_dataset = random_split(dataset,[train_size,val_size,test_size])
+    generator = torch.Generator().manual_seed(RANDOM_STATE)
+
+    train_dataset, val_dataset, test_dataset = random_split(
+        dataset,
+        [train_size, val_size, test_size],
+        generator=generator)
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        num_workers=4,
-        pin_memory=True
+        num_workers=NUM_WORKERS,
+        pin_memory=(DEVICE.type == "cuda")
     )
 
     val_loader = DataLoader(
         val_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
-        num_workers=4,
-        pin_memory=True
+        num_workers=NUM_WORKERS,
+        pin_memory=(DEVICE.type == "cuda")
     )
 
     test_loader = DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
-        num_workers=4,
-        pin_memory=True
+        num_workers=NUM_WORKERS,
+        pin_memory=(DEVICE.type == "cuda")
     )
 
     return (train_loader,val_loader,test_loader)
