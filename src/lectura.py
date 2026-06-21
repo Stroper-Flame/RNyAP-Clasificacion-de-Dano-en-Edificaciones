@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-import cv2
+import rasterio
 import numpy as np
 from shapely import wkt
 
@@ -11,14 +11,12 @@ def leer_json(json_path):
     return datos
 
 def leer_imagen(img_path):
-    img_path = str(img_path)
-    imagen = cv2.imread(img_path)
-    if imagen is None:
-        raise FileNotFoundError(f"No se pudo leer la imagen:\n{img_path}")
-    imagen = cv2.cvtColor(imagen,cv2.COLOR_BGR2RGB)
+    with rasterio.open(img_path) as src:
+        imagen = src.read()
+    imagen = np.transpose(imagen, (1, 2, 0))
     return imagen
 
-def obtener_archivos_dataset(dataset_dir):
+def obtener_archivos(dataset_dir):
     dataset_dir = Path(dataset_dir)
     muestras = []
     particiones = ["tier1","tier3","test","hold"]
@@ -59,8 +57,7 @@ def obtener_archivos_dataset(dataset_dir):
 
     return muestras
 
-
-def mostrar_resumen_dataset(muestras):
+def resumen(muestras):
     print(f"Total de muestras: {len(muestras):,}")
 
     if len(muestras) > 0:
