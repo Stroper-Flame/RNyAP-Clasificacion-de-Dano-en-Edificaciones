@@ -9,7 +9,7 @@ MODELOS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTADOS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Tamaño de muestra para pruebas
-SAMPLE_SIZE = None     # None = dataset completo
+SAMPLE_SIZE = 250     # None = dataset completo
 
 #Ruta para el Dataset
 DATASET_DIR = Path("/home/markusancestro/Documentos/UPIIT-IPN/xView2_Dataset/geotiffs/")
@@ -55,7 +55,7 @@ CLASS_WEIGHTS = [
 ]
 
 #Parametros de Entrenamiento
-EPOCHS = 5
+EPOCHS = 1
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
 
