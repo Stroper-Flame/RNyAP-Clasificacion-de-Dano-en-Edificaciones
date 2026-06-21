@@ -26,6 +26,7 @@ NUM_CLASSES = len(CLASSES)
 
 ##Reducir las imagenes
 IMG_SIZE = 224
+PADDING = 40
 
 #División del dataset
 TRAIN_SIZE = 0.70
