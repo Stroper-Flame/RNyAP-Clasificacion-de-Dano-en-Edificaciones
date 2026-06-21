@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import cv2
 import numpy as np
+from shapely import wkt
 
 def leer_json(json_path):
     json_path = Path(json_path)
@@ -72,3 +73,34 @@ def mostrar_resumen_dataset(muestras):
         print(f"POST IMG  : {ejemplo['post_img']}")
         print(f"PRE JSON  : {ejemplo['pre_json']}")
         print(f"POST JSON : {ejemplo['post_json']}")
+
+def obtener_edificios(json_data):
+    edificios = []
+
+    for feature in json_data["features"]["xy"]:
+        propiedades = feature["properties"]
+        edificios.append(
+            {
+                "uid": propiedades["uid"],
+                "label": propiedades["subtype"],
+                "wkt": feature["wkt"]
+            }
+        )
+    return edificios
+
+def obtener_coordenadas(wkt_polygon):
+    poligono = wkt.loads(wkt_polygon)
+    coords = np.array(poligono.exterior.coords)
+    return coords
+
+def obtener_bbox(coords):
+    xmin = int(np.min(coords[:, 0]))
+    xmax = int(np.max(coords[:, 0]))
+    ymin = int(np.min(coords[:, 1]))
+    ymax = int(np.max(coords[:, 1]))
+    return xmin, ymin, xmax, ymax
+
+def recortar_imagen(imagen, bbox):
+    xmin, ymin, xmax, ymax = bbox
+    crop = imagen[ymin:ymax, xmin:xmax]
+    return crop

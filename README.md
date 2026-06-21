@@ -1,1 +1,1 @@
-# RNyAP-Clasificacion-de-Dano-en-Edificaciones
+#Redes Neuronales y Aprendizaje Profundo: Clasificación de Daño en Edificaciones a Partir de Imágenes Satelitales
