@@ -44,9 +44,9 @@ PRETRAINED = True
 FEATURE_DIM = 512
 
 #Parametros de Entrenamiento
-EPOCHS = 100
+EPOCHS = 1
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
 
 #Hadware a usar 
-DEVICE = "CUDA"
+DEVICE = "cpu"
