@@ -1,5 +1,3 @@
-# src/entrenamiento.py
-
 import torch
 import torch.nn as nn
 from torch.utils.data import (DataLoader,random_split)
@@ -42,84 +40,46 @@ def crear_dataloaders(dataset):
 def train_epoch(model,dataloader,criterion,optimizer,device):
     model.train()
     running_loss = 0.0
-
     correct = 0
     total = 0
-
     for pre_img, post_img, labels in dataloader:
-
         pre_img = pre_img.to(device)
         post_img = post_img.to(device)
-
         labels = labels.to(device)
-
         optimizer.zero_grad()
-
         outputs = model(pre_img,post_img)
-
         loss = criterion(outputs,labels)
-
         loss.backward()
-
         optimizer.step()
-
         running_loss += loss.item()
-
         preds = outputs.argmax(dim=1)
-
         correct += (preds == labels).sum().item()
-
         total += labels.size(0)
-
     epoch_loss = (running_loss/ len(dataloader))
-
     epoch_acc = (correct/ total)
-
     return (epoch_loss,epoch_acc)
 
 @torch.no_grad()
 def validate_epoch(model,dataloader,criterion,device):
     model.eval()
-
     running_loss = 0.0
-
     correct = 0
     total = 0
-
     for pre_img, post_img, labels in dataloader:
-
         pre_img = pre_img.to(device)
         post_img = post_img.to(device)
-
         labels = labels.to(device)
-
         outputs = model(pre_img,post_img)
-
         loss = criterion(outputs,labels)
-
         running_loss += loss.item()
-
         preds = outputs.argmax(dim=1)
-
         correct += (preds == labels).sum().item()
-
         total += labels.size(0)
-
     epoch_loss = (running_loss/ len(dataloader))
-
     epoch_acc = (correct/ total)
-
     return (epoch_loss,epoch_acc)
 
-def train_model(
-    model,
-    train_loader,
-    val_loader,
-    criterion,
-    optimizer,
-    epochs,
-    device
-):
+def train_model(model,train_loader,val_loader,criterion,optimizer,epochs,device):
 
     history = {
         "train_loss": [],
