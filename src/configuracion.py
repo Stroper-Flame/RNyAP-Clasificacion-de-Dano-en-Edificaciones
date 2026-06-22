@@ -9,7 +9,7 @@ MODELOS_DIR.mkdir(parents=True, exist_ok=True)
 RESULTADOS_DIR.mkdir(parents=True, exist_ok=True)
 
 #Ruta del dataset xView2
-DATASET_DIR = Path(r"C:\Users\danie\Downloads\geotiffs")
+DATASET_DIR = Path("/home/markusancestro/Documentos/UPIIT-IPN/xView2_Dataset/geotiffs")
 
 #None usa todas las muestras disponibles
 SAMPLE_SIZE = 100000
