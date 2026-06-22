@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
-
 from torchvision.models import resnet18, ResNet18_Weights
-
 from src.configuracion import NUM_CLASSES, FEATURE_DIM, PRETRAINED
 
-
+#Red siamesa: extrae features de pre/post disaster, calcula diferencia y clasifica
 class SiameseResNet18(nn.Module):
 
+    #Inicializa el backbone ResNet18 y el clasificador
     def __init__(self):
         super().__init__()
         weights = ResNet18_Weights.DEFAULT if PRETRAINED else None
@@ -23,11 +22,10 @@ class SiameseResNet18(nn.Module):
             nn.Linear(128, NUM_CLASSES)
         )
 
+    #Concatena pre y post, extrae features, calcula |diff| y clasifica
     def forward(self, pre_img, post_img):
-        imagenes = torch.cat((pre_img, post_img), dim=0)
-        features = self.feature_extractor(imagenes)
-        features = torch.flatten(features, start_dim=1)
-        f_pre, f_post = torch.chunk(features, chunks=2, dim=0)
-        diff = torch.abs(f_post - f_pre)
-        output = self.classifier(diff)
-        return output
+        x = torch.cat((pre_img, post_img), dim=0)
+        x = self.feature_extractor(x)
+        x = torch.flatten(x, start_dim=1)
+        f_pre, f_post = torch.chunk(x, chunks=2, dim=0)
+        return self.classifier(torch.abs(f_post - f_pre))

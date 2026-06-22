@@ -3,7 +3,7 @@ import seaborn as sns
 
 from src.configuracion import RESULTADOS_DIR
 
-
+#Curva de perdida de entrenamiento y validacion
 def graficar_loss(history):
     plt.figure(figsize=(8, 5))
     plt.plot(history["train_loss"], label="Train Loss")
@@ -17,7 +17,7 @@ def graficar_loss(history):
     plt.savefig(RESULTADOS_DIR / "loss.png")
     plt.show()
 
-
+#Curva de exactitud de entrenamiento y validacion
 def graficar_accuracy(history):
     plt.figure(figsize=(8, 5))
     plt.plot(history["train_acc"], label="Train Accuracy")
@@ -31,24 +31,19 @@ def graficar_accuracy(history):
     plt.savefig(RESULTADOS_DIR / "accuracy.png")
     plt.show()
 
-
+#Heatmap de la matriz de confusion
 def graficar_matriz_confusion(confusion_matrix, class_names):
     plt.figure(figsize=(8, 6))
     sns.heatmap(confusion_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
-    plt.xlabel("Predicción")
+    plt.xlabel("Prediccion")
     plt.ylabel("Real")
-    plt.title("Matriz de Confusión")
+    plt.title("Matriz de Confusion")
     plt.tight_layout()
     plt.savefig(RESULTADOS_DIR / "matriz_confusion.png")
     plt.show()
 
-
+#Imprime en consola todas las metricas de evaluacion
 def mostrar_metricas(resultados):
-    print(f"Accuracy          : {resultados['accuracy']:.4f}")
-    print(f"Balanced Accuracy : {resultados['balanced_accuracy']:.4f}")
-    print(f"Precision weighted: {resultados['precision']:.4f}")
-    print(f"Recall weighted   : {resultados['recall']:.4f}")
-    print(f"F1 weighted       : {resultados['f1']:.4f}")
-    print(f"Precision macro   : {resultados['precision_macro']:.4f}")
-    print(f"Recall macro      : {resultados['recall_macro']:.4f}")
-    print(f"F1 macro          : {resultados['f1_macro']:.4f}")
+    for key in ("accuracy", "balanced_accuracy", "precision", "recall", "f1",
+                "precision_macro", "recall_macro", "f1_macro"):
+        print(f"{key:20s}: {resultados[key]:.4f}")

@@ -5,19 +5,19 @@ import rasterio
 import numpy as np
 from shapely import wkt
 
+#Cargar el archivo JSON con los datos
 def leer_json(json_path):
     json_path = Path(json_path)
     with open(json_path, "r", encoding="utf-8") as f:
-        datos = json.load(f)
-    return datos
+        return json.load(f)
 
+#Leer una imagen .tiff y la retorna en formato HWC.
 def leer_imagen(img_path):
     with rasterio.open(img_path) as src:
         imagen = src.read()
-    imagen = np.transpose(imagen, (1, 2, 0))
-    return imagen
+    return np.transpose(imagen, (1, 2, 0))
 
-
+#Recortar la región de interés en la imagen alrededor del bounding box.
 def leer_recorte(img_path, bbox, padding=0):
     xmin, ymin, xmax, ymax = bbox
     with rasterio.open(img_path) as src:
@@ -28,13 +28,14 @@ def leer_recorte(img_path, bbox, padding=0):
         ventana = Window(col_off=x0, row_off=y0, width=x1 - x0, height=y1 - y0)
         imagen = src.read(window=ventana)
     imagen = np.transpose(imagen, (1, 2, 0))
+    # Asegurar 3 canales RGB
     if imagen.shape[2] > 3:
         imagen = imagen[:, :, :3]
     elif imagen.shape[2] == 1:
         imagen = np.repeat(imagen, 3, axis=2)
     return imagen
 
-
+#Seleccionar los pares pre/post disaster y sus JSONs en todas las particiones.
 def obtener_archivos(dataset_dir):
     dataset_dir = Path(dataset_dir)
     muestras = []
@@ -57,31 +58,29 @@ def obtener_archivos(dataset_dir):
                 muestras.append({"id": nombre, "pre_img": pre_img, "post_img": post_img, "pre_json": pre_json, "post_json": post_json})
     return muestras
 
-
+#Imprime un resumen de las muestras encontradas
 def resumen(muestras):
     print(f"Total de muestras: {len(muestras):,}")
     if len(muestras) > 0:
         ejemplo = muestras[0]
         print("\nEjemplo:")
-        print(f"ID        : {ejemplo['id']}")
-        print(f"PRE IMG   : {ejemplo['pre_img']}")
-        print(f"POST IMG  : {ejemplo['post_img']}")
-        print(f"PRE JSON  : {ejemplo['pre_json']}")
-        print(f"POST JSON : {ejemplo['post_json']}")
+        for key in ("id", "pre_img", "post_img", "pre_json", "post_json"):
+            print(f"{key.upper():10s}: {ejemplo[key]}")
 
-
+#Extrae lista de edificios
 def obtener_edificios(json_data):
     edificios = []
     for feature in json_data["features"]["xy"]:
-        propiedades = feature["properties"]
-        edificios.append({"uid": propiedades["uid"], "label": propiedades["subtype"], "wkt": feature["wkt"]})
+        props = feature["properties"]
+        edificios.append({"uid": props["uid"], "label": props["subtype"], "wkt": feature["wkt"]})
     return edificios
 
+#Convierte un polígono WKT a un arreglo de coordenadas
 def obtener_coordenadas(wkt_polygon):
     poligono = wkt.loads(wkt_polygon)
-    coords = np.array(poligono.exterior.coords)
-    return coords
+    return np.array(poligono.exterior.coords)
 
+#Calcula el bounding box a partir de las coordenadas
 def obtener_bbox(coords):
     xmin = int(np.min(coords[:, 0]))
     xmax = int(np.max(coords[:, 0]))
@@ -89,7 +88,7 @@ def obtener_bbox(coords):
     ymax = int(np.max(coords[:, 1]))
     return xmin, ymin, xmax, ymax
 
+#Recortar la imagen usando la bounding box
 def recortar_imagen(imagen, bbox):
     xmin, ymin, xmax, ymax = bbox
-    crop = imagen[ymin:ymax, xmin:xmax]
-    return crop
+    return imagen[ymin:ymax, xmin:xmax]

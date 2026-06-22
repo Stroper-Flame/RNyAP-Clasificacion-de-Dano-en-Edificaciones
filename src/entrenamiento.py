@@ -5,9 +5,9 @@ from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import GroupShuffleSplit
 from src.configuracion import BATCH_SIZE, TRAIN_SIZE, VAL_SIZE, TEST_SIZE, RANDOM_STATE, NUM_WORKERS, NUM_CLASSES, DEVICE
 
-
+#Crea un DataLoader con la configuracion del proyecto
 def crear_loader(dataset, shuffle):
-    parametros = {
+    params = {
         "dataset": dataset,
         "batch_size": BATCH_SIZE,
         "shuffle": shuffle,
@@ -15,58 +15,46 @@ def crear_loader(dataset, shuffle):
         "pin_memory": DEVICE.type == "cuda"
     }
     if NUM_WORKERS > 0:
-        parametros["persistent_workers"] = True
-        parametros["prefetch_factor"] = 2
-    return DataLoader(**parametros)
+        params["persistent_workers"] = True
+        params["prefetch_factor"] = 2
+    return DataLoader(**params)
 
-
+#Divide el dataset en train/val/test usando GroupShuffleSplit por escena
 def crear_dataloaders(dataset):
-    suma = TRAIN_SIZE + VAL_SIZE + TEST_SIZE
-    if abs(suma - 1.0) > 0.000001:
-        raise ValueError("TRAIN_SIZE, VAL_SIZE y TEST_SIZE deben sumar 1.0")
+    assert abs(TRAIN_SIZE + VAL_SIZE + TEST_SIZE - 1.0) < 1e-6, "Las proporciones deben sumar 1.0"
 
-    etiquetas = np.array([sample["label"] for sample in dataset.samples])
-    escenas = np.array([sample["scene_id"] for sample in dataset.samples])
+    etiquetas = np.array([s["label"] for s in dataset.samples])
+    escenas = np.array([s["scene_id"] for s in dataset.samples])
 
-    primer_split = GroupShuffleSplit(n_splits=1, train_size=TRAIN_SIZE, random_state=RANDOM_STATE)
-    train_indices, temporal_indices = next(primer_split.split(np.zeros((len(dataset), 1)), etiquetas, escenas))
+    # 1er split: train vs (val+test)
+    gss1 = GroupShuffleSplit(n_splits=1, train_size=TRAIN_SIZE, random_state=RANDOM_STATE)
+    train_idx, temp_idx = next(gss1.split(np.zeros((len(dataset), 1)), etiquetas, escenas))
 
-    proporcion_val = VAL_SIZE / (VAL_SIZE + TEST_SIZE)
-    segundo_split = GroupShuffleSplit(n_splits=1, train_size=proporcion_val, random_state=RANDOM_STATE)
-    val_posiciones, test_posiciones = next(segundo_split.split(np.zeros((len(temporal_indices), 1)), etiquetas[temporal_indices], escenas[temporal_indices]))
+    # 2do split: val vs test dentro del temporal
+    val_ratio = VAL_SIZE / (VAL_SIZE + TEST_SIZE)
+    gss2 = GroupShuffleSplit(n_splits=1, train_size=val_ratio, random_state=RANDOM_STATE)
+    val_idx, test_idx = next(gss2.split(np.zeros((len(temp_idx), 1)), etiquetas[temp_idx], escenas[temp_idx]))
+    val_idx, test_idx = temp_idx[val_idx], temp_idx[test_idx]
 
-    val_indices = temporal_indices[val_posiciones]
-    test_indices = temporal_indices[test_posiciones]
+    train_loader = crear_loader(Subset(dataset, train_idx.tolist()), shuffle=True)
+    val_loader = crear_loader(Subset(dataset, val_idx.tolist()), shuffle=False)
+    test_loader = crear_loader(Subset(dataset, test_idx.tolist()), shuffle=False)
 
-    train_dataset = Subset(dataset, train_indices.tolist())
-    val_dataset = Subset(dataset, val_indices.tolist())
-    test_dataset = Subset(dataset, test_indices.tolist())
-
-    train_loader = crear_loader(train_dataset, shuffle=True)
-    val_loader = crear_loader(val_dataset, shuffle=False)
-    test_loader = crear_loader(test_dataset, shuffle=False)
-
-    conteos = np.bincount(etiquetas[train_indices], minlength=NUM_CLASSES).astype(np.float32)
+    # Pesos para balanceo de clases
+    conteos = np.bincount(etiquetas[train_idx], minlength=NUM_CLASSES).astype(np.float32)
     if np.any(conteos == 0):
         raise ValueError(f"Falta alguna clase en entrenamiento. Conteos: {conteos.tolist()}")
-
     pesos = conteos.sum() / (NUM_CLASSES * conteos)
     class_weights = torch.tensor(pesos, dtype=torch.float32)
 
-    print(f"Train: {len(train_dataset)} muestras")
-    print(f"Val:   {len(val_dataset)} muestras")
-    print(f"Test:  {len(test_dataset)} muestras")
-    print("Conteos de entrenamiento:", conteos.astype(int).tolist())
-    print("Pesos calculados:", pesos.round(4).tolist())
-
+    print(f"Train: {len(train_idx)} | Val: {len(val_idx)} | Test: {len(test_idx)}")
+    print("Conteos:", conteos.astype(int).tolist(), "| Pesos:", pesos.round(4).tolist())
     return train_loader, val_loader, test_loader, class_weights
 
-
+#Una epoca de entrenamiento. Retorna (loss, accuracy)
 def train_epoch(model, dataloader, criterion, optimizer, device):
     model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
+    running_loss = correct = total = 0.0
 
     for pre_img, post_img, labels in dataloader:
         pre_img = pre_img.to(device, non_blocking=True)
@@ -82,17 +70,13 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
         correct += (preds == labels).sum().item()
         total += labels.size(0)
 
-    epoch_loss = running_loss / len(dataloader)
-    epoch_acc = correct / total
-    return epoch_loss, epoch_acc
+    return running_loss / len(dataloader), correct / total
 
-
+#Una epoca de validacion sin gradients. Retorna (loss, accuracy)
 @torch.no_grad()
 def validate_epoch(model, dataloader, criterion, device):
     model.eval()
-    running_loss = 0.0
-    correct = 0
-    total = 0
+    running_loss = correct = total = 0.0
 
     for pre_img, post_img, labels in dataloader:
         pre_img = pre_img.to(device, non_blocking=True)
@@ -105,42 +89,35 @@ def validate_epoch(model, dataloader, criterion, device):
         correct += (preds == labels).sum().item()
         total += labels.size(0)
 
-    epoch_loss = running_loss / len(dataloader)
-    epoch_acc = correct / total
-    return epoch_loss, epoch_acc
+    return running_loss / len(dataloader), correct / total
 
-
+#Bucle principal de entrenamiento con early stopping
 def train_model(model, train_loader, val_loader, criterion, optimizer, epochs, device, patience=10):
-    history = {
-        "train_loss": [],
-        "train_acc": [],
-        "val_loss": [],
-        "val_acc": []
-    }
+    history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
     best_val_loss = float("inf")
     best_state = copy.deepcopy(model.state_dict())
-    epochs_without_improvement = 0
+    stall = 0
 
     for epoch in range(epochs):
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = validate_epoch(model, val_loader, criterion, device)
+
         history["train_loss"].append(train_loss)
         history["train_acc"].append(train_acc)
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
-        print(f"Epoch [{epoch + 1}/{epochs}] | Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+        print(f"Epoch [{epoch+1}/{epochs}] Train Loss: {train_loss:.4f} Acc: {train_acc:.4f} | Val Loss: {val_loss:.4f} Acc: {val_acc:.4f}")
 
         if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_state = copy.deepcopy(model.state_dict())
-            epochs_without_improvement = 0
+            best_val_loss, best_state = val_loss, copy.deepcopy(model.state_dict())
+            stall = 0
         else:
-            epochs_without_improvement += 1
+            stall += 1
 
-        if epochs_without_improvement >= patience:
-            print(f"Early stopping en la época {epoch + 1}")
+        if stall >= patience:
+            print(f"Early stopping en epoca {epoch+1}")
             break
 
     model.load_state_dict(best_state)
-    print(f"Mejor pérdida de validación: {best_val_loss:.4f}")
+    print(f"Mejor val_loss: {best_val_loss:.4f}")
     return history
