@@ -12,10 +12,6 @@ RESULTADOS_DIR.mkdir(parents=True, exist_ok=True)
 # Ruta del dataset
 DATASET_DIR = Path(r"C:\Users\danie\Downloads\geotiffs")
 
-# Tamaño de muestra para pruebas
-# None = dataset completo
-SAMPLE_SIZE = None
-
 # Cantidad de edificios a utilizar
 # None utiliza todo el dataset
 SAMPLE_SIZE = 100000
@@ -55,15 +51,10 @@ NUM_WORKERS = 4
 BACKBONE = "resnet18"
 PRETRAINED = True
 FEATURE_DIM = 512
-CLASS_WEIGHTS = [
-    1.0,
-    8.49,
-    10.47,
-    9.92
-]
 
-#Parametros de Entrenamiento
-EPOCHS = 5
+# Entrenamiento
+EPOCHS = 100
+PATIENCE = 10
 LEARNING_RATE = 0.0001
 WEIGHT_DECAY = 0.0001
 

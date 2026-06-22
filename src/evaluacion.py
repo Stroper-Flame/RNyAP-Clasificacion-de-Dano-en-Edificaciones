@@ -1,19 +1,7 @@
 import torch
+from sklearn.metrics import (accuracy_score,balanced_accuracy_score,precision_score,recall_score,f1_score,confusion_matrix,classification_report)
 
-from sklearn.metrics import (
-    accuracy_score,
-    balanced_accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    confusion_matrix,
-    classification_report
-)
-
-from src.configuracion import (
-    NUM_CLASSES,
-    IDX_TO_CLASS
-)
+from src.configuracion import (NUM_CLASSES,IDX_TO_CLASS)
 
 
 @torch.no_grad()
@@ -26,32 +14,17 @@ def evaluarM(model, dataloader, device):
 
     for pre_img, post_img, labels in dataloader:
 
-        pre_img = pre_img.to(
-            device,
-            non_blocking=True
-        )
+        pre_img = pre_img.to(device,non_blocking=True)
 
-        post_img = post_img.to(
-            device,
-            non_blocking=True
-        )
+        post_img = post_img.to(device,non_blocking=True)
 
-        outputs = model(
-            pre_img,
-            post_img
-        )
+        outputs = model(pre_img,post_img)
 
-        preds = outputs.argmax(
-            dim=1
-        )
+        preds = outputs.argmax(dim=1)
 
-        y_true.extend(
-            labels.numpy()
-        )
+        y_true.extend(labels.numpy())
 
-        y_pred.extend(
-            preds.cpu().numpy()
-        )
+        y_pred.extend(preds.cpu().numpy())
 
     clases = list(
         range(NUM_CLASSES)
